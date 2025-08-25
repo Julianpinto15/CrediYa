@@ -13,7 +13,9 @@ public class RouterRest {
     public RouterFunction<ServerResponse> routerFunction(HandlerV1 handlerV1, HandlerV2 handlerV2) {
         return RouterFunctions
             .route()
-            .path("/api/v1", builder -> builder.GET("/usecase/path", handlerV1::listenGETUseCase).POST("/usecase/otherpath", handlerV1::listenPOSTUseCase).GET("/otherusercase/path", handlerV1::listenGETOtherUseCase))
+                .path("/api/v1/usuarios", builder -> builder
+                        .POST("", handlerV1::registrarUsuario)
+                )
             .path("/api/v2", builder -> builder.GET("/usecase/path", handlerV2::listenGETUseCase).POST("/usecase/otherpath", handlerV2::listenPOSTUseCase).GET("/otherusercase/path", handlerV2::listenGETOtherUseCase))
             .build();
         }

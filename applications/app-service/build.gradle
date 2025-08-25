@@ -7,9 +7,12 @@ dependencies {
     implementation project(':model')
     implementation project(':usecase')
     implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'org.slf4j:slf4j-api:2.0.7'
+    implementation 'ch.qos.logback:logback-classic:1.5.18'
     runtimeOnly('org.springframework.boot:spring-boot-devtools')
     testImplementation 'com.tngtech.archunit:archunit:1.4.1'
     testImplementation 'com.fasterxml.jackson.core:jackson-databind'
+
 }
 
 tasks.register('explodedJar', Copy) {
