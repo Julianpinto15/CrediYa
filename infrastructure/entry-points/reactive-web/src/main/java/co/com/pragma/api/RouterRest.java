@@ -9,14 +9,15 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 
 @Configuration
 public class RouterRest {
+
     @Bean
-    public RouterFunction<ServerResponse> routerFunction(UserHandler handlerV1, SolicitudHandler handlerV2) {
+    public RouterFunction<ServerResponse> routerFunction(UserHandler handler) {
         return RouterFunctions
-            .route()
+                .route()
                 .path("/api/v1/usuarios", builder -> builder
-                        .POST("", handlerV1::registrarUsuario)
+                        .POST("", handler::registrarUsuario)
                 )
-            .path("/api/v1/solicitudes", builder -> builder.POST("", handlerV2::registrarSolicitud))
-            .build();
-        }
+                .build();
+    }
+
 }

@@ -1,7 +1,5 @@
 package co.com.pragma.usecase.user;
 
-import co.com.pragma.model.solicitud.Solicitud;
-import co.com.pragma.model.solicitud.exceptions.ClientNotFoundException;
 import co.com.pragma.model.user.User;
 import co.com.pragma.model.user.exceptions.EmailAlreadyExistsException;
 import co.com.pragma.model.user.exceptions.UserValidationException;
@@ -13,13 +11,12 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.regex.Pattern;
 
+
 @RequiredArgsConstructor
 public class UserUseCase {
     private final UserRepository userRepository;
 
-    private static final Pattern EMAIL_PATTERN = Pattern.compile(
-            "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
-    );
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
     private static final BigDecimal MIN_SALARY = BigDecimal.ZERO;
     private static final BigDecimal MAX_SALARY = new BigDecimal("15000000");
 
@@ -39,18 +36,22 @@ public class UserUseCase {
     );
 
     public Mono<User> save(User user) {
-        return validateUser(user)
-                .then(userRepository.existsByCorreo(user.getCorreoElectronico()))
-                .flatMap(existe -> {
-                    if (existe) {
-                        return Mono.error(new EmailAlreadyExistsException(user.getCorreoElectronico()));
+        if (user.getCorreoElectronico() == null || !user.getCorreoElectronico().contains("@")) {
+            return Mono.error(new UserValidationException("Correo electrónico inválido"));
+        }
+
+        return userRepository.existsByCorreo(user.getCorreoElectronico())
+                .flatMap(exists -> {
+                    if (exists) {
+                        return Mono.error(new EmailAlreadyExistsException("El correo ya existe"));
                     }
                     return userRepository.save(user);
                 });
     }
 
-    private Mono<Void> validateUser(User user) {
-        return Mono.fromRunnable(() -> validators.forEach(validator -> validator.validate(user)));
+
+    private void validateUser(User user) {
+        validators.forEach(validator -> validator.validate(user));
     }
 
     private void validateNotNullOrEmpty(String value, String errorMessage) {

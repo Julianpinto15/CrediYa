@@ -2,44 +2,39 @@ package co.com.pragma.api.config;
 
 import co.com.pragma.model.user.exceptions.EmailAlreadyExistsException;
 import co.com.pragma.model.user.exceptions.UserValidationException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.ControllerAdvice;
-import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
+import org.springframework.web.server.WebExceptionHandler;
 import reactor.core.publisher.Mono;
 
-import java.util.HashMap;
 import java.util.Map;
 
-@ControllerAdvice
-public class GlobalErrorHandler {
+@Component
+@Order(-2)  // Alta prioridad
+public class GlobalErrorHandler implements WebExceptionHandler {
 
-    @ExceptionHandler(EmailAlreadyExistsException.class)
-    public Mono<Void> handleEmailAlreadyExists(EmailAlreadyExistsException ex, ServerWebExchange exchange) {
-        return buildErrorResponse(exchange, HttpStatus.CONFLICT, ex.getMessage());
-    }
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @ExceptionHandler(UserValidationException.class)
-    public Mono<Void> handleValidation(UserValidationException ex, ServerWebExchange exchange) {
-        return buildErrorResponse(exchange, HttpStatus.BAD_REQUEST, ex.getMessage());
-    }
+    @Override
+    public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {
+        HttpStatus status = determineStatus(ex);
+        Map<String, String> errorBody = Map.of("error", ex.getMessage() != null ? ex.getMessage() : "Error inesperado");
 
-    @ExceptionHandler(Exception.class)
-    public Mono<Void> handleGeneric(Exception ex, ServerWebExchange exchange) {
-        return buildErrorResponse(exchange, HttpStatus.INTERNAL_SERVER_ERROR, "Ocurrió un error inesperado");
-    }
-
-    private Mono<Void> buildErrorResponse(ServerWebExchange exchange, HttpStatus status, String message) {
         exchange.getResponse().setStatusCode(status);
         exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
-        Map<String, String> errorBody = new HashMap<>();
-        errorBody.put("error", message);
+        return exchange.getResponse().writeWith(Mono.fromCallable(() ->
+                exchange.getResponse().bufferFactory().wrap(objectMapper.writeValueAsBytes(errorBody))
+        ));
+    }
 
-        byte[] bytes = errorBody.toString().getBytes();
-        return exchange.getResponse().writeWith(Mono.just(exchange.getResponse()
-                .bufferFactory()
-                .wrap(bytes)));
+    private HttpStatus determineStatus(Throwable ex) {
+        if (ex instanceof EmailAlreadyExistsException) return HttpStatus.CONFLICT;
+        if (ex instanceof UserValidationException) return HttpStatus.BAD_REQUEST;
+        return HttpStatus.INTERNAL_SERVER_ERROR;
     }
 }
