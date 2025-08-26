@@ -1,5 +1,6 @@
 package co.com.pragma.r2dbc;
 
+import co.com.pragma.model.solicitud.TipoPrestamo;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
@@ -19,7 +20,7 @@ public class SolicitudData {
     private BigDecimal monto;
     private Integer plazo;
     @Column("tipo_prestamo")
-    private String tipoPrestamo;
+    private TipoPrestamo tipoPrestamo;
     private String estado;
     @Column("fecha_creacion")
     private LocalDateTime fechaCreacion;

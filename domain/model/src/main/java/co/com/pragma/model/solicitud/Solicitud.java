@@ -19,7 +19,7 @@ public class Solicitud {
     private String documentoIdentidad;
     private BigDecimal monto;
     private Integer plazo;
-    private  String tipoPrestamo;
+    private  TipoPrestamo  tipoPrestamo;
     private String estado;
     private LocalDateTime fechaCreacion;
 }
