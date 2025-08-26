@@ -17,6 +17,7 @@ public class User {
     private String id;
     private  String nombres;
     private  String apellidos;
+    private  String documentoIdentidad;
     private  LocalDate fechaNacimiento;
     private  String direccion;
     private  String telefono;

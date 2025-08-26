@@ -32,4 +32,12 @@ public class MyReactiveRepositoryAdapter extends ReactiveAdapterOperations<User,
         return super.save(user);
     }
 
+    @Override
+    public Mono<Boolean> existsByDocumentoIdentidad(String documentoIdentidad) {
+        return repository.findByDocumentoIdentidad(documentoIdentidad)
+                .map(u -> true)
+                .defaultIfEmpty(false);
+    }
+
+
 }

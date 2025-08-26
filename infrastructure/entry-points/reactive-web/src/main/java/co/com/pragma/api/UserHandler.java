@@ -15,7 +15,7 @@ import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
-public class HandlerV1 {
+public class UserHandler {
 
 private final UserUseCase userUseCase;
 

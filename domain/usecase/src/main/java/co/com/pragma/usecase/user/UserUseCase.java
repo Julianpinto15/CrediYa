@@ -1,5 +1,7 @@
 package co.com.pragma.usecase.user;
 
+import co.com.pragma.model.solicitud.Solicitud;
+import co.com.pragma.model.solicitud.exceptions.ClientNotFoundException;
 import co.com.pragma.model.user.User;
 import co.com.pragma.model.user.exceptions.EmailAlreadyExistsException;
 import co.com.pragma.model.user.exceptions.UserValidationException;
@@ -33,6 +35,7 @@ public class UserUseCase {
             user -> validateSalarioBaseNotNull(user.getSalarioBase()),
             user -> validateEmailFormat(user.getCorreoElectronico()),
             user -> validateSalaryRange(user.getSalarioBase())
+
     );
 
     public Mono<User> save(User user) {
@@ -73,4 +76,7 @@ public class UserUseCase {
             throw new UserValidationException("El salario base debe estar entre 0 y 15,000,000");
         }
     }
+
+
+
 }

@@ -20,6 +20,9 @@ public class UserData {
     @Column("apellidos")
     private String apellidos;
 
+    @Column("documento_identidad")
+    private  String documentoIdentidad;
+
     @Column("fecha_nacimiento")
     private LocalDate fechaNacimiento;
 
