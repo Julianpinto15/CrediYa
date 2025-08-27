@@ -11,7 +11,6 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.regex.Pattern;
 
-
 @RequiredArgsConstructor
 public class UserUseCase {
     private final UserRepository userRepository;
@@ -32,15 +31,11 @@ public class UserUseCase {
             user -> validateSalarioBaseNotNull(user.getSalarioBase()),
             user -> validateEmailFormat(user.getCorreoElectronico()),
             user -> validateSalaryRange(user.getSalarioBase())
-
     );
 
     public Mono<User> save(User user) {
-        if (user.getCorreoElectronico() == null || !user.getCorreoElectronico().contains("@")) {
-            return Mono.error(new UserValidationException("Correo electrónico inválido"));
-        }
-
-        return userRepository.existsByCorreo(user.getCorreoElectronico())
+        return validateUser(user)
+                .then(userRepository.existsByCorreo(user.getCorreoElectronico()))
                 .flatMap(exists -> {
                     if (exists) {
                         return Mono.error(new EmailAlreadyExistsException("El correo ya existe"));
@@ -49,9 +44,13 @@ public class UserUseCase {
                 });
     }
 
-
-    private void validateUser(User user) {
-        validators.forEach(validator -> validator.validate(user));
+    private Mono<Void> validateUser(User user) {
+        try {
+            validators.forEach(validator -> validator.validate(user));
+            return Mono.empty();
+        } catch (UserValidationException e) {
+            return Mono.error(e);
+        }
     }
 
     private void validateNotNullOrEmpty(String value, String errorMessage) {
@@ -77,7 +76,4 @@ public class UserUseCase {
             throw new UserValidationException("El salario base debe estar entre 0 y 15,000,000");
         }
     }
-
-
-
 }

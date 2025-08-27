@@ -15,11 +15,13 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder(toBuilder = true)
 public class Solicitud {
+
     private UUID id;
     private String documentoIdentidad;
     private BigDecimal monto;
     private Integer plazo;
-    private  TipoPrestamo  tipoPrestamo;
-    private String estado;
+    private TipoPrestamo tipoPrestamo;
+    private EstadoSolicitud estado;
     private LocalDateTime fechaCreacion;
+
 }

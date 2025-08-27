@@ -1,6 +1,9 @@
 package co.com.pragma.r2dbc;
 
 import co.com.pragma.model.user.User;
+import co.com.pragma.r2dbc.adapter.MyReactiveRepositoryAdapter;
+import co.com.pragma.r2dbc.data.UserData;
+import co.com.pragma.r2dbc.repository.MyReactiveRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,7 +13,6 @@ import org.reactivecommons.utils.ObjectMapper;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import static org.mockito.ArgumentMatchers.any;

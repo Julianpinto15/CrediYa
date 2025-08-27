@@ -11,7 +11,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class TipoPrestamo {
+public class EstadoSolicitud {
     private UUID id;
-    private String nombre;  // Ej. "PERSONAL", "HIPOTECARIO"
+    private String nombre;  // Ej. "Pendiente de revisión", "Aprobada"
 }

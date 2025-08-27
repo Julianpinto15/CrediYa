@@ -1,8 +1,10 @@
-package co.com.pragma.r2dbc;
+package co.com.pragma.r2dbc.adapter;
 
 import co.com.pragma.model.user.User;
 import co.com.pragma.model.user.gateways.UserRepository;
+import co.com.pragma.r2dbc.data.UserData;
 import co.com.pragma.r2dbc.helper.ReactiveAdapterOperations;
+import co.com.pragma.r2dbc.repository.MyReactiveRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.reactivecommons.utils.ObjectMapper;
 import org.springframework.stereotype.Repository;

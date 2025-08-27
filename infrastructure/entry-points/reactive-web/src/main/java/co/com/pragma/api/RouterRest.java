@@ -20,4 +20,14 @@ public class RouterRest {
                 .build();
     }
 
+    @Bean
+    public RouterFunction<ServerResponse> routerFunction(SolicitudHandler handler) {
+        return RouterFunctions
+                .route()
+                .path("/api/v1/solicitud", builder -> builder
+                        .POST("", handler::registrarSolicitud)
+                )
+                .build();
+    }
+
 }
