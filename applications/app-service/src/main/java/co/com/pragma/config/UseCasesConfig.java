@@ -25,6 +25,7 @@ public class UseCasesConfig {
                 return new UserUseCase(userRepository);
         }
 
+
         @Bean
         public SolicitudUseCase solicitudUseCase(SolicitudRepository solicitudRepository,
                                                  TipoPrestamoRepository tipoPrestamoRepository,
@@ -32,17 +33,5 @@ public class UseCasesConfig {
                                                  ClienteGateway clienteGateway) {  // 👈 se inyecta el gateway
                 return new SolicitudUseCase(solicitudRepository, tipoPrestamoRepository, estadoSolicitudRepository, clienteGateway);
         }
-
-        /*@Bean
-        public TipoPrestamoRepository tipoPrestamoRepository(TipoPrestamoReactiveRepository repository, ObjectMapper mapper) {
-                return new TipoPrestamoReactiveRepositoryAdapter(repository, mapper);
-        }
-
-        @Bean
-        public EstadoSolicitudRepository estadoSolicitudRepository(EstadoSolicitudReactiveRepository repository, ObjectMapper mapper) {
-                return new EstadoSolicitudReactiveRepositoryAdapter(repository, mapper);
-        }
-*/
-
 
 }

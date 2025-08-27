@@ -1,6 +1,7 @@
 package co.com.pragma.api;
 
-import co.com.pragma.api.dto.SolicitudRequest;
+import co.com.pragma.api.dto.SolicitudCreateRequest;
+import co.com.pragma.api.dto.SolicitudResponse;
 import co.com.pragma.model.solicitud.Solicitud;
 import co.com.pragma.model.solicitud.TipoPrestamo;
 import co.com.pragma.model.solicitud.gateways.TipoPrestamoRepository;
@@ -22,34 +23,55 @@ public class SolicitudHandler {
     private final TipoPrestamoRepository tipoPrestamoRepository;
 
     public Mono<ServerResponse> registrarSolicitud(ServerRequest request) {
-        return request.bodyToMono(SolicitudRequest.class)
+        return request.bodyToMono(SolicitudCreateRequest.class)
                 .flatMap(this::buildSolicitudFromRequest)
                 .flatMap(solicitudUseCase::registrarSolicitud)
-                .flatMap(solicitud -> ServerResponse.ok()
+                .map(this::mapToResponse) // Mapeamos a DTO de salida
+                .flatMap(solicitudResponse -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(solicitud));
+                        .bodyValue(solicitudResponse));
     }
 
-    private Mono<Solicitud> buildSolicitudFromRequest(SolicitudRequest request) {
-        return resolveTipoPrestamo(request)
+    private Mono<Solicitud> buildSolicitudFromRequest(SolicitudCreateRequest request) {
+        return resolveTipoPrestamo(request.getTipoPrestamoNombre())
                 .map(tipoPrestamo -> Solicitud.builder()
                         .documentoIdentidad(request.getDocumentoIdentidad())
                         .monto(request.getMonto())
                         .plazo(request.getPlazo())
                         .tipoPrestamo(tipoPrestamo)
-                        .fechaCreacion(LocalDateTime.now())
-                        .build()
+                        .build() // sin estado ni fecha
                 );
     }
 
-    private Mono<TipoPrestamo> resolveTipoPrestamo(SolicitudRequest request) {
-        return Mono.justOrEmpty(request.getTipoPrestamo())
-                .flatMap(tp -> Mono.justOrEmpty(tp.getNombre())
-                        .flatMap(tipoPrestamoRepository::findByNombre))
-                .switchIfEmpty(Mono.justOrEmpty(request.getTipoPrestamoId())
-                        .flatMap(tipoPrestamoRepository::findById))
-                .switchIfEmpty(Mono.justOrEmpty(request.getTipoPrestamoNombre())
-                        .flatMap(tipoPrestamoRepository::findByNombre))
-                .switchIfEmpty(Mono.error(new IllegalArgumentException("Debe especificar el tipo de préstamo")));
+
+    private Mono<TipoPrestamo> resolveTipoPrestamo(String tipoPrestamoNombre) {
+        return Mono.justOrEmpty(tipoPrestamoNombre)
+                .flatMap(tipoPrestamoRepository::findByNombre)
+                .switchIfEmpty(Mono.error(new IllegalArgumentException("Debe especificar un tipo de préstamo válido")));
+    }
+
+    private SolicitudResponse mapToResponse(Solicitud solicitud) {
+        SolicitudResponse response = new SolicitudResponse();
+        response.setId(solicitud.getId());
+        response.setDocumentoIdentidad(solicitud.getDocumentoIdentidad());
+        response.setMonto(solicitud.getMonto());
+        response.setPlazo(solicitud.getPlazo());
+        response.setFechaCreacion(solicitud.getFechaCreacion());
+
+        if (solicitud.getTipoPrestamo() != null) {
+            SolicitudResponse.TipoPrestamoResponse tp = new SolicitudResponse.TipoPrestamoResponse();
+            tp.setId(solicitud.getTipoPrestamo().getId());
+            tp.setNombre(solicitud.getTipoPrestamo().getNombre());
+            response.setTipoPrestamo(tp);
+        }
+
+        if (solicitud.getEstado() != null) {
+            SolicitudResponse.EstadoSolicitudResponse est = new SolicitudResponse.EstadoSolicitudResponse();
+            est.setId(solicitud.getEstado().getId());
+            est.setNombre(solicitud.getEstado().getNombre());
+            response.setEstado(est);
+        }
+
+        return response;
     }
 }
