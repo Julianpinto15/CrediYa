@@ -29,5 +29,12 @@ private final UserUseCase userUseCase;
                 .doOnError(e -> log.error("Error en handler: {}", e.getMessage(), e));
     }
 
+    public Mono<ServerResponse> existsByDocument(ServerRequest request) {
+        String documento = request.pathVariable("cedula");
+        return userUseCase.existsByDocumento(documento)
+                .flatMap(exists -> ServerResponse.ok().bodyValue(exists))
+                .switchIfEmpty(ServerResponse.ok().bodyValue(false));
+    }
+
 
 }

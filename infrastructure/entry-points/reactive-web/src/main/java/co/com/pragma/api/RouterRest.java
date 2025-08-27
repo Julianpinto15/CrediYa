@@ -11,23 +11,25 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 public class RouterRest {
 
     @Bean
-    public RouterFunction<ServerResponse> routerFunction(UserHandler handler) {
+    public RouterFunction<ServerResponse> userRoutes(UserHandler handler) {
         return RouterFunctions
                 .route()
                 .path("/api/v1/usuarios", builder -> builder
                         .POST("", handler::registrarUsuario)
+                        .GET("/exists/{cedula}", handler::existsByDocument) // 👈 NUEVO
                 )
                 .build();
     }
 
     @Bean
-    public RouterFunction<ServerResponse> routerFunction(SolicitudHandler handler) {
+    public RouterFunction<ServerResponse> solicitudRoutes(SolicitudHandler handler) {
         return RouterFunctions
                 .route()
-                .path("/api/v1/solicitud", builder -> builder
+                .path("/api/v1/solicitudes", builder -> builder
                         .POST("", handler::registrarSolicitud)
                 )
                 .build();
     }
+
 
 }

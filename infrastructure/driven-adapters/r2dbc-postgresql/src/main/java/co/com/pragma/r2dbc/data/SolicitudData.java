@@ -1,6 +1,5 @@
 package co.com.pragma.r2dbc.data;
 
-import co.com.pragma.model.solicitud.TipoPrestamo;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

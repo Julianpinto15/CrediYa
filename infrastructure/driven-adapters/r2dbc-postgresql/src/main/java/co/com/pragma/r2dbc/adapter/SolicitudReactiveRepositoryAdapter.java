@@ -44,6 +44,8 @@ public class SolicitudReactiveRepositoryAdapter
                                                           ObjectMapper mapper,
                                                           TipoPrestamoRepository tipoPrestamoRepo,
                                                           EstadoSolicitudRepository estadoRepo) {
+        log.debug("Construyendo Solicitud desde SolicitudData ID: {}", data.getId());
+
         Solicitud.SolicitudBuilder builder = Solicitud.builder()
                 .id(data.getId())
                 .documentoIdentidad(data.getDocumentoIdentidad())
@@ -54,29 +56,53 @@ public class SolicitudReactiveRepositoryAdapter
         // Cargar relaciones de manera reactiva
         Mono<TipoPrestamo> tipoPrestamoMono = data.getTipoPrestamoId() != null
                 ? tipoPrestamoRepo.findById(data.getTipoPrestamoId())
+                .doOnNext(tipo -> log.debug("TipoPrestamo encontrado: {}", tipo.getNombre()))
+                .doOnError(error -> log.error("Error buscando TipoPrestamo por ID {}: {}", data.getTipoPrestamoId(), error.getMessage()))
                 : Mono.empty();
 
         Mono<EstadoSolicitud> estadoMono = data.getEstadoSolicitudId() != null
                 ? estadoRepo.findById(data.getEstadoSolicitudId())
+                .doOnNext(estado -> log.debug("EstadoSolicitud encontrado: {}", estado.getNombre()))
+                .doOnError(error -> log.error("Error buscando EstadoSolicitud por ID {}: {}", data.getEstadoSolicitudId(), error.getMessage()))
                 : Mono.empty();
 
-        return Mono.zip(tipoPrestamoMono.defaultIfEmpty(null), estadoMono.defaultIfEmpty(null))
-                .map(tuple -> builder
-                        .tipoPrestamo(tuple.getT1())
-                        .estado(tuple.getT2())
-                        .build())
-                .switchIfEmpty(Mono.just(builder.build()));
+        // CORRECCIÓN: No usar defaultIfEmpty(null), usar switchIfEmpty con un Mono que contenga el valor
+        return Mono.zip(
+                        tipoPrestamoMono.switchIfEmpty(Mono.fromCallable(() -> (TipoPrestamo) null)),
+                        estadoMono.switchIfEmpty(Mono.fromCallable(() -> (EstadoSolicitud) null))
+                )
+                .map(tuple -> {
+                    TipoPrestamo tipoPrestamo = tuple.getT1();
+                    EstadoSolicitud estado = tuple.getT2();
+
+                    log.debug("Construyendo Solicitud con tipoPrestamo: {} y estado: {}",
+                            tipoPrestamo != null ? tipoPrestamo.getNombre() : "null",
+                            estado != null ? estado.getNombre() : "null");
+
+                    return builder
+                            .tipoPrestamo(tipoPrestamo)
+                            .estado(estado)
+                            .build();
+                })
+                .switchIfEmpty(Mono.fromCallable(() -> builder.build()));
     }
 
     @Override
     @Transactional
     public Mono<Solicitud> save(Solicitud solicitud) {
-        log.debug("Guardando solicitud: {}", solicitud.getDocumentoIdentidad());
+        log.debug("Guardando solicitud: documento={}, tipoPrestamo={}, estado={}",
+                solicitud.getDocumentoIdentidad(),
+                solicitud.getTipoPrestamo() != null ? solicitud.getTipoPrestamo().getNombre() : "null",
+                solicitud.getEstado() != null ? solicitud.getEstado().getNombre() : "null");
 
         // Convertir Solicitud a SolicitudData
         SolicitudData solicitudData = toData(solicitud);
 
+        log.debug("SolicitudData creada: tipoPrestamoId={}, estadoSolicitudId={}",
+                solicitudData.getTipoPrestamoId(), solicitudData.getEstadoSolicitudId());
+
         return repository.save(solicitudData)
+                .doOnNext(savedData -> log.debug("Datos guardados en BD: ID={}", savedData.getId()))
                 .flatMap(savedData -> buildSolicitudFromData(savedData, mapper, tipoPrestamoRepository, estadoSolicitudRepository))
                 .doOnSuccess(saved -> log.info("Solicitud guardada exitosamente con ID: {}", saved.getId()))
                 .doOnError(error -> log.error("Error guardando solicitud: {}", error.getMessage()));
@@ -102,15 +128,20 @@ public class SolicitudReactiveRepositoryAdapter
     // Método para convertir Solicitud a SolicitudData
     @Override
     protected SolicitudData toData(Solicitud solicitud) {
+        UUID tipoPrestamoId = solicitud.getTipoPrestamo() != null ? solicitud.getTipoPrestamo().getId() : null;
+        UUID estadoSolicitudId = solicitud.getEstado() != null ? solicitud.getEstado().getId() : null;
+
+        log.debug("Convirtiendo Solicitud a SolicitudData: tipoPrestamoId={}, estadoSolicitudId={}",
+                tipoPrestamoId, estadoSolicitudId);
+
         return SolicitudData.builder()
                 .id(solicitud.getId())
                 .documentoIdentidad(solicitud.getDocumentoIdentidad())
                 .monto(solicitud.getMonto())
                 .plazo(solicitud.getPlazo())
-                .tipoPrestamoId(solicitud.getTipoPrestamo() != null ? solicitud.getTipoPrestamo().getId() : null)
-                .estadoSolicitudId(solicitud.getEstado() != null ? solicitud.getEstado().getId() : null)
+                .tipoPrestamoId(tipoPrestamoId)
+                .estadoSolicitudId(estadoSolicitudId)
                 .fechaCreacion(solicitud.getFechaCreacion())
                 .build();
     }
-
 }
