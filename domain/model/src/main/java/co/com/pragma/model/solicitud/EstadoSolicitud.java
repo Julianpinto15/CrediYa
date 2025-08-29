@@ -13,5 +13,6 @@ import java.util.UUID;
 @Builder
 public class EstadoSolicitud {
     private UUID id;
-    private String nombre;  // Ej. "Pendiente de revisión", "Aprobada"
+    private String nombre;
+    private String descripcion;
 }

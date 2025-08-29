@@ -3,14 +3,16 @@ package co.com.pragma.config;
 import co.com.pragma.model.solicitud.gateways.ClienteGateway;
 import co.com.pragma.model.solicitud.gateways.EstadoSolicitudRepository;
 import co.com.pragma.model.solicitud.gateways.SolicitudRepository;
-import co.com.pragma.model.solicitud.gateways.TipoPrestamoRepository;
 import co.com.pragma.model.user.gateways.UserRepository;
 import co.com.pragma.usecase.solicitud.SolicitudUseCase;
 import co.com.pragma.usecase.user.UserUseCase;
+import org.reactivecommons.utils.ObjectMapper;
+import org.reactivecommons.utils.ObjectMapperImp;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.FilterType;
+
 
 @Configuration
 @ComponentScan(basePackages = "co.com.pragma.usecase",
@@ -25,13 +27,11 @@ public class UseCasesConfig {
                 return new UserUseCase(userRepository);
         }
 
-
         @Bean
         public SolicitudUseCase solicitudUseCase(SolicitudRepository solicitudRepository,
-                                                 TipoPrestamoRepository tipoPrestamoRepository,
                                                  EstadoSolicitudRepository estadoSolicitudRepository,
-                                                 ClienteGateway clienteGateway) {  // 👈 se inyecta el gateway
-                return new SolicitudUseCase(solicitudRepository, tipoPrestamoRepository, estadoSolicitudRepository, clienteGateway);
+                                                 ClienteGateway clienteGateway) {
+                return new SolicitudUseCase(solicitudRepository, estadoSolicitudRepository, clienteGateway);
         }
 
 }

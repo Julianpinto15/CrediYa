@@ -4,25 +4,35 @@ import co.com.pragma.api.dto.SolicitudCreateRequest;
 import co.com.pragma.api.dto.SolicitudResponse;
 import co.com.pragma.model.solicitud.Solicitud;
 
+import co.com.pragma.model.solicitud.exceptions.InvalidLoanTypeException;
+import co.com.pragma.model.solicitud.gateways.TipoPrestamoRepository;
+import org.springframework.stereotype.Component;
+import reactor.core.publisher.Mono;
+
 import java.util.UUID;
 
+@Component
 public class SolicitudMapper {
 
-    public static Solicitud toDomain(SolicitudCreateRequest request) {
-        return Solicitud.builder()
-                .id(UUID.randomUUID()) // o lo genera la DB
-                .documentoIdentidad(request.getDocumentoIdentidad())
-                .monto(request.getMonto())
-                .plazo(request.getPlazo())
-                .tipoPrestamo(
-                        co.com.pragma.model.solicitud.TipoPrestamo.builder()
-                                .nombre(request.getTipoPrestamoNombre())
-                                .build()
-                )
-                .build();
+    private final TipoPrestamoRepository tipoPrestamoRepository;
+
+    public SolicitudMapper(TipoPrestamoRepository tipoPrestamoRepository) {
+        this.tipoPrestamoRepository = tipoPrestamoRepository;
     }
 
-    public static SolicitudResponse toResponse(Solicitud solicitud) {
+    public Mono<Solicitud> toDomain(SolicitudCreateRequest request) {
+        return tipoPrestamoRepository.findByNombre(request.getTipoPrestamoNombre())
+                .switchIfEmpty(Mono.error(new InvalidLoanTypeException("Tipo de préstamo inválido: " + request.getTipoPrestamoNombre())))
+                .map(tipo -> Solicitud.builder()
+                        .id(null)
+                        .documentoIdentidad(request.getDocumentoIdentidad())
+                        .monto(request.getMonto())
+                        .plazo(request.getPlazo())
+                        .tipoPrestamo(tipo)
+                        .build());
+    }
+
+    public SolicitudResponse toResponse(Solicitud solicitud) {
         SolicitudResponse response = new SolicitudResponse();
         response.setId(solicitud.getId());
         response.setDocumentoIdentidad(solicitud.getDocumentoIdentidad());
@@ -30,15 +40,20 @@ public class SolicitudMapper {
         response.setPlazo(solicitud.getPlazo());
         response.setFechaCreacion(solicitud.getFechaCreacion());
 
-        SolicitudResponse.TipoPrestamoResponse tipo = new SolicitudResponse.TipoPrestamoResponse();
-        tipo.setId(solicitud.getTipoPrestamo().getId());
-        tipo.setNombre(solicitud.getTipoPrestamo().getNombre());
-        response.setTipoPrestamo(tipo);
+        if (solicitud.getTipoPrestamo() != null) {
+            SolicitudResponse.TipoPrestamoResponse tp = new SolicitudResponse.TipoPrestamoResponse();
+            tp.setId(solicitud.getTipoPrestamo().getId());
+            tp.setNombre(solicitud.getTipoPrestamo().getNombre());
+            tp.setValidacionAutomatica(solicitud.getTipoPrestamo().getValidacionAutomatica());
+            response.setTipoPrestamo(tp);
+        }
 
-        SolicitudResponse.EstadoSolicitudResponse estado = new SolicitudResponse.EstadoSolicitudResponse();
-        estado.setId(solicitud.getEstado().getId());
-        estado.setNombre(solicitud.getEstado().getNombre());
-        response.setEstado(estado);
+        if (solicitud.getEstado() != null) {
+            SolicitudResponse.EstadoSolicitudResponse est = new SolicitudResponse.EstadoSolicitudResponse();
+            est.setId(solicitud.getEstado().getId());
+            est.setNombre(solicitud.getEstado().getNombre());
+            response.setEstado(est);
+        }
 
         return response;
     }

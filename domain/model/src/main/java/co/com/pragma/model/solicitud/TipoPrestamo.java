@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Getter
@@ -13,5 +14,9 @@ import java.util.UUID;
 @Builder
 public class TipoPrestamo {
     private UUID id;
-    private String nombre;  // Ej. "PERSONAL", "HIPOTECARIO"
+    private String nombre;
+    private BigDecimal montoMinimo;
+    private BigDecimal montoMaximo;
+    private BigDecimal tasaInteres;
+    private Boolean validacionAutomatica;
 }

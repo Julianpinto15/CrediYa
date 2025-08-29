@@ -1,5 +1,6 @@
 package co.com.pragma.r2dbc.data;
 
+import jakarta.persistence.GeneratedValue;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,6 +19,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Table("solicitudes")
 public class SolicitudData {
+
     @Id
     private UUID id;
 
@@ -27,8 +29,8 @@ public class SolicitudData {
     private BigDecimal monto;
 
     private Integer plazo;
-    @Column("tipo_prestamo_id")
 
+    @Column("tipo_prestamo_id")
     private UUID tipoPrestamoId;
 
     @Column("estado_solicitud_id")

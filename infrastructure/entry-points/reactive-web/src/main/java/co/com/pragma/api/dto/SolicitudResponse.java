@@ -26,11 +26,13 @@ public class SolicitudResponse {
     public static class TipoPrestamoResponse {
         private UUID id;
         private String nombre;
+        private Boolean validacionAutomatica;
     }
 
     @Data
     public static class EstadoSolicitudResponse {
         private UUID id;
         private String nombre;
+        private String descripcion;
     }
 }

@@ -2,34 +2,58 @@ package co.com.pragma.api;
 
 import co.com.pragma.api.dto.SolicitudCreateRequest;
 import co.com.pragma.api.dto.SolicitudResponse;
+import co.com.pragma.api.mapper.SolicitudMapper;
 import co.com.pragma.model.solicitud.Solicitud;
 import co.com.pragma.model.solicitud.TipoPrestamo;
 import co.com.pragma.model.solicitud.gateways.TipoPrestamoRepository;
 import co.com.pragma.usecase.solicitud.SolicitudUseCase;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 
-import java.time.LocalDateTime;
 
 @Component
 @RequiredArgsConstructor
 public class SolicitudHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(SolicitudHandler.class);
     private final SolicitudUseCase solicitudUseCase;
     private final TipoPrestamoRepository tipoPrestamoRepository;
 
+    private final SolicitudMapper solicitudMapper;
+
     public Mono<ServerResponse> registrarSolicitud(ServerRequest request) {
         return request.bodyToMono(SolicitudCreateRequest.class)
-                .flatMap(this::buildSolicitudFromRequest)
+                .doOnNext(dto -> log.debug("📩 Solicitud recibida: {}", dto))
+                .flatMap(solicitudMapper::toDomain)  // Ahora retorna Mono<Solicitud>
                 .flatMap(solicitudUseCase::registrarSolicitud)
-                .map(this::mapToResponse) // Mapeamos a DTO de salida
-                .flatMap(solicitudResponse -> ServerResponse.ok()
+                .map(solicitudMapper::toResponse)
+                .flatMap(response -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(solicitudResponse));
+                        .bodyValue(response))
+                .doOnSuccess(resp -> log.info("Solicitud registrada exitosamente"))
+                .onErrorResume(e -> {
+                    log.error("Error registrando solicitud: {}", e.getMessage(), e);
+                    return ServerResponse.badRequest()
+                            .bodyValue(new ErrorResponse(e.getMessage()));
+                });
+    }
+
+    private static class ErrorResponse {
+        private final String message;
+
+        public ErrorResponse(String message) {
+            this.message = message;
+        }
+
+        public String getMessage() {
+            return message;
+        }
     }
 
     private Mono<Solicitud> buildSolicitudFromRequest(SolicitudCreateRequest request) {
