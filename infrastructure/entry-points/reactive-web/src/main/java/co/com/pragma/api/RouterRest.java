@@ -92,7 +92,7 @@ public class RouterRest {
                 .route()
                 .path("/api/v1/usuarios", builder -> builder
                         .POST("", handler::registrarUsuario)
-                        .GET("/exists/{cedula}", handler::existsByDocument)
+                        .GET("/exists/{documento}", handler::existsByDocument)
                 )
                 .build();
     }

@@ -53,10 +53,10 @@ public class MyReactiveRepositoryAdapter extends ReactiveAdapterOperations<User,
         return repository.findByDocumentoIdentidad(documentoIdentidad)
                 .doOnNext(userData -> log.debug("Usuario encontrado por documento {}: {}",
                         documentoIdentidad, userData.getCorreoElectronico()))
-                .map(userData -> true)
-                .defaultIfEmpty(false)
+                .hasElement() // ← CLAVE: Esto retorna true si hay elemento, false si está vacío
                 .doOnNext(exists -> log.debug("Usuario con documento {} existe: {}", documentoIdentidad, exists))
                 .doOnError(error -> log.error("Error verificando existencia por documento {}: {}",
                         documentoIdentidad, error.getMessage()));
     }
+
 }

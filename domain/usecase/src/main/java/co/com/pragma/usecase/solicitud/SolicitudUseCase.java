@@ -75,6 +75,7 @@ public class SolicitudUseCase {
                 });
     }
 
+
     private Mono<Solicitud> verificarRangosTipoPrestamo(Solicitud solicitud) {
         if (solicitud.getMonto().compareTo(solicitud.getTipoPrestamo().getMontoMinimo()) < 0 ||
                 solicitud.getMonto().compareTo(solicitud.getTipoPrestamo().getMontoMaximo()) > 0) {

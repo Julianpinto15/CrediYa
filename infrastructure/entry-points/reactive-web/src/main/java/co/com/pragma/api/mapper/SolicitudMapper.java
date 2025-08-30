@@ -44,7 +44,6 @@ public class SolicitudMapper {
             SolicitudResponse.TipoPrestamoResponse tp = new SolicitudResponse.TipoPrestamoResponse();
             tp.setId(solicitud.getTipoPrestamo().getId());
             tp.setNombre(solicitud.getTipoPrestamo().getNombre());
-            tp.setValidacionAutomatica(solicitud.getTipoPrestamo().getValidacionAutomatica());
             response.setTipoPrestamo(tp);
         }
 
@@ -52,6 +51,7 @@ public class SolicitudMapper {
             SolicitudResponse.EstadoSolicitudResponse est = new SolicitudResponse.EstadoSolicitudResponse();
             est.setId(solicitud.getEstado().getId());
             est.setNombre(solicitud.getEstado().getNombre());
+            est.setDescripcion(solicitud.getEstado().getDescripcion());
             response.setEstado(est);
         }
 

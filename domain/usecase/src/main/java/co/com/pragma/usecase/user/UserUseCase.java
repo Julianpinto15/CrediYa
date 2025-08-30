@@ -45,9 +45,7 @@ public class UserUseCase {
     }
 
     public Mono<Boolean> existsByDocumento(String documento) {
-        return userRepository.existsByDocumentoIdentidad(documento)
-                .map(user -> true)
-                .defaultIfEmpty(false);
+        return userRepository.existsByDocumentoIdentidad(documento);
     }
 
 

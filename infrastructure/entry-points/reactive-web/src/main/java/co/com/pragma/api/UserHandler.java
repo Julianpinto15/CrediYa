@@ -59,7 +59,7 @@ private final UserUseCase userUseCase;
 
 
     public Mono<ServerResponse> existsByDocument(ServerRequest request) {
-        String documento = request.pathVariable("cedula");
+        String documento = request.pathVariable("documento");
         log.debug("Verificando existencia de usuario con documento: {}", documento);
 
         return userUseCase.existsByDocumento(documento)

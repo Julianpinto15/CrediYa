@@ -1,5 +1,6 @@
 package co.com.pragma.api;
 
+import co.com.pragma.api.dto.ErrorResponse;
 import co.com.pragma.api.dto.SolicitudCreateRequest;
 import co.com.pragma.api.dto.SolicitudResponse;
 import co.com.pragma.api.mapper.SolicitudMapper;
@@ -44,17 +45,6 @@ public class SolicitudHandler {
                 });
     }
 
-    private static class ErrorResponse {
-        private final String message;
-
-        public ErrorResponse(String message) {
-            this.message = message;
-        }
-
-        public String getMessage() {
-            return message;
-        }
-    }
 
     private Mono<Solicitud> buildSolicitudFromRequest(SolicitudCreateRequest request) {
         return resolveTipoPrestamo(request.getTipoPrestamoNombre())
@@ -73,6 +63,7 @@ public class SolicitudHandler {
                 .flatMap(tipoPrestamoRepository::findByNombre)
                 .switchIfEmpty(Mono.error(new IllegalArgumentException("Debe especificar un tipo de préstamo válido")));
     }
+
 
     private SolicitudResponse mapToResponse(Solicitud solicitud) {
         SolicitudResponse response = new SolicitudResponse();

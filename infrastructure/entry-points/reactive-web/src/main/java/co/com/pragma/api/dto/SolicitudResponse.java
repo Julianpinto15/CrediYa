@@ -19,14 +19,12 @@ public class SolicitudResponse {
 
     private TipoPrestamoResponse tipoPrestamo;
     private EstadoSolicitudResponse estado;
-
     private LocalDateTime fechaCreacion;
 
     @Data
     public static class TipoPrestamoResponse {
         private UUID id;
         private String nombre;
-        private Boolean validacionAutomatica;
     }
 
     @Data
