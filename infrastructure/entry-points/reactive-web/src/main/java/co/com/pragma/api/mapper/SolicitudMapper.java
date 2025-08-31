@@ -9,8 +9,6 @@ import co.com.pragma.model.solicitud.gateways.TipoPrestamoRepository;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
-import java.util.UUID;
-
 @Component
 public class SolicitudMapper {
 

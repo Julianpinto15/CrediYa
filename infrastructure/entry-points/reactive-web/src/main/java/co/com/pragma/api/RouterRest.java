@@ -18,11 +18,13 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 import co.com.pragma.api.dto.UserRequest;
 import co.com.pragma.api.dto.SolicitudCreateRequest;
 import co.com.pragma.model.user.User;
-import co.com.pragma.model.solicitud.Solicitud;
+
 
 @Configuration
 @Tag(name = "CrediYa API", description = "Endpoints para gestión de usuarios y solicitudes de préstamo")
 public class RouterRest {
+
+    //http://localhost:8080/webjars/swagger-ui/index.html#/
 
     @Bean
     @RouterOperations({
@@ -73,11 +75,7 @@ public class RouterRest {
                             responses = {
                                     @ApiResponse(
                                             responseCode = "200",
-                                            description = "Consulta exitosa",
-                                            content = @Content(
-                                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                                    schema = @Schema(implementation = Boolean.class)
-                                            )
+                                            description = "Consulta exitosa"
                                     ),
                                     @ApiResponse(
                                             responseCode = "400",
