@@ -1,6 +1,5 @@
 package co.com.pragma.api;
 
-import co.com.pragma.api.dto.ErrorResponse;
 import co.com.pragma.api.dto.SolicitudCreateRequest;
 import co.com.pragma.api.dto.SolicitudResponse;
 import co.com.pragma.api.mapper.SolicitudMapper;
