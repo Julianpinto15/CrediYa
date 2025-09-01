@@ -2,7 +2,6 @@ package co.com.pragma.usecase.solicitud;
 
 import co.com.pragma.model.solicitud.Solicitud;
 import co.com.pragma.model.solicitud.exceptions.ClientNotFoundException;
-
 import co.com.pragma.model.solicitud.exceptions.SolicitudValidationException;
 import co.com.pragma.model.solicitud.gateways.ClienteGateway;
 import co.com.pragma.model.solicitud.gateways.EstadoSolicitudRepository;
@@ -16,7 +15,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
-
 @RequiredArgsConstructor
 public class SolicitudUseCase {
 
@@ -27,7 +25,6 @@ public class SolicitudUseCase {
     private static final BigDecimal MIN_MONTO = BigDecimal.ONE;
     private static final int MIN_PLAZO = 1;
     private static final String ESTADO_INICIAL = "Pendiente de revisión";
-
 
     @FunctionalInterface
     interface SolicitudValidator {
@@ -42,21 +39,20 @@ public class SolicitudUseCase {
     );
 
     public Mono<Solicitud> registrarSolicitud(Solicitud solicitud) {
-        return validateSolicitud(solicitud)
-                .then(verificarClienteExiste(solicitud))
+        return Mono.fromCallable(() -> {
+                    // Ejecutar validaciones síncronas dentro de un callable para manejo reactivo
+                    validateSolicitudSync(solicitud);
+                    return solicitud;
+                })
+                .flatMap(this::verificarClienteExiste)
                 .flatMap(this::verificarRangosTipoPrestamo)
                 .flatMap(this::asignarEstadoInicial)
                 .map(this::asignarFechaCreacion)
                 .flatMap(solicitudRepository::save);
     }
 
-    private Mono<Void> validateSolicitud(Solicitud solicitud) {
-        try {
-            validators.forEach(validator -> validator.validate(solicitud));
-            return Mono.empty();
-        } catch (SolicitudValidationException e) {
-            return Mono.error(e);
-        }
+    private void validateSolicitudSync(Solicitud solicitud) throws SolicitudValidationException {
+        validators.forEach(validator -> validator.validate(solicitud));
     }
 
     private Solicitud asignarFechaCreacion(Solicitud solicitud) {
@@ -74,7 +70,6 @@ public class SolicitudUseCase {
                     return Mono.just(solicitud);
                 });
     }
-
 
     private Mono<Solicitud> verificarRangosTipoPrestamo(Solicitud solicitud) {
         if (solicitud.getMonto().compareTo(solicitud.getTipoPrestamo().getMontoMinimo()) < 0 ||
