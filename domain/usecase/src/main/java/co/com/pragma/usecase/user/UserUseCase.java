@@ -55,6 +55,27 @@ public class UserUseCase {
             throw new UserValidationException("El campo apellidos es obligatorio");
         }
 
+        // Validar documento identidad
+        String documento = user.getDocumentoIdentidad();
+        if (documento == null || documento.trim().isEmpty()) {
+            throw new UserValidationException("El campo documento identidad es obligatorio");
+        }
+
+        // Debe ser solo números
+        if (!documento.matches("\\d+")) {
+            throw new UserValidationException("El documento identidad debe contener solo números");
+        }
+
+        // Longitud mínima y máxima (ejemplo: entre 5 y 15 dígitos)
+        if (documento.length() < 5 || documento.length() > 15) {
+            throw new UserValidationException("El documento identidad debe tener entre 5 y 15 dígitos");
+        }
+
+        // Evitar documentos con todos los dígitos iguales (0000, 1111, 2222, etc.)
+        if (documento.chars().allMatch(c -> c == documento.charAt(0))) {
+            throw new UserValidationException("El documento identidad no puede tener todos los dígitos iguales");
+        }
+
         // Validar correo electrónico
         if (user.getCorreoElectronico() == null || user.getCorreoElectronico().trim().isEmpty()) {
             throw new UserValidationException("El campo correo_electronico es obligatorio");

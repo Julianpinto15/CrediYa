@@ -86,6 +86,57 @@ class UserUseCaseTest {
     }
 
     @Test
+    void save_nullDocumentoIdentidad_throwsValidationException() {
+        User invalidUser = validUser.toBuilder().documentoIdentidad(null).build();
+
+        StepVerifier.create(userUseCase.save(invalidUser))
+                .expectErrorMatches(e -> e instanceof UserValidationException &&
+                        e.getMessage().equals("El campo documento identidad es obligatorio"))
+                .verify();
+    }
+
+    @Test
+    void save_documentoTooShort_throwsValidationException() {
+        User invalidUser = validUser.toBuilder().documentoIdentidad("123").build(); // menos de 5 dígitos
+
+        StepVerifier.create(userUseCase.save(invalidUser))
+                .expectErrorMatches(e -> e instanceof UserValidationException &&
+                        e.getMessage().equals("El documento identidad debe tener entre 5 y 15 dígitos"))
+                .verify();
+    }
+
+    @Test
+    void save_documentoTooLong_throwsValidationException() {
+        User invalidUser = validUser.toBuilder().documentoIdentidad("1234567890123456").build(); // más de 15 dígitos
+
+        StepVerifier.create(userUseCase.save(invalidUser))
+                .expectErrorMatches(e -> e instanceof UserValidationException &&
+                        e.getMessage().equals("El documento identidad debe tener entre 5 y 15 dígitos"))
+                .verify();
+    }
+
+    @Test
+    void save_documentoWithLetters_throwsValidationException() {
+        User invalidUser = validUser.toBuilder().documentoIdentidad("12AB34").build(); // mezcla letras
+
+        StepVerifier.create(userUseCase.save(invalidUser))
+                .expectErrorMatches(e -> e instanceof UserValidationException &&
+                        e.getMessage().equals("El documento identidad debe contener solo números"))
+                .verify();
+    }
+
+    @Test
+    void save_documentoAllSameDigits_throwsValidationException() {
+        User invalidUser = validUser.toBuilder().documentoIdentidad("1111111").build(); // todos iguales
+
+        StepVerifier.create(userUseCase.save(invalidUser))
+                .expectErrorMatches(e -> e instanceof UserValidationException &&
+                        e.getMessage().equals("El documento identidad no puede tener todos los dígitos iguales"))
+                .verify();
+    }
+
+
+    @Test
     void save_nullCorreo_throwsValidationException() {
         User invalidUser = validUser.toBuilder().correoElectronico(null).build();
 
