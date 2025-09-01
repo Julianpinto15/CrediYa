@@ -37,12 +37,7 @@ public class SolicitudHandler {
                 .flatMap(response -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(response))
-                .doOnSuccess(resp -> log.info("Solicitud registrada exitosamente"))
-                .onErrorResume(e -> {
-                    log.error("Error registrando solicitud: {}", e.getMessage(), e);
-                    return ServerResponse.badRequest()
-                            .bodyValue(new ErrorResponse(e.getMessage()));
-                });
+                .doOnSuccess(resp -> log.info("Solicitud registrada exitosamente"));
     }
 
 
