@@ -19,4 +19,15 @@ public class User {
     private String telefono;
     private String correoElectronico;
     private BigDecimal salarioBase;
+
+    // Campos para autenticación
+    private String password;
+    private Rol rol;
+
+    public enum Rol {
+        CLIENTE,
+        ASESOR,
+        ADMIN
+    }
+
 }

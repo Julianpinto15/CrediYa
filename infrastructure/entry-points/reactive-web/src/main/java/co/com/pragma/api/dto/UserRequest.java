@@ -1,5 +1,6 @@
 package co.com.pragma.api.dto;
 
+import co.com.pragma.model.user.User;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
 import lombok.Data;
@@ -71,4 +72,11 @@ public class UserRequest {
     @PositiveOrZero(message = "El salario base debe ser mayor o igual a 0")
     @Max(value = 15000000, message = "El salario base debe ser menor o igual a $15.000.000")
     private BigDecimal salarioBase;
+
+    @NotBlank(message = "La contraseña es obligatoria")
+    @Size(min = 6, message = "La contraseña debe tener al menos 6 caracteres")
+    private String password;
+
+    @NotNull(message = "El rol es obligatorio")
+    private User.Rol rol;
 }

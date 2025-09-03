@@ -1,6 +1,7 @@
 package co.com.pragma.api;
 
 import co.com.pragma.api.dto.UserRequest;
+import co.com.pragma.model.user.AuthenticatedUser;
 import co.com.pragma.model.user.User;
 import co.com.pragma.model.user.exceptions.EmailAlreadyExistsException;
 import co.com.pragma.model.user.exceptions.UserValidationException;
@@ -18,19 +19,37 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class UserHandler {
 
-private final UserUseCase userUseCase;
+    private final UserUseCase userUseCase;
 
     public Mono<ServerResponse> registrarUsuario(ServerRequest request) {
         log.debug("Recibiendo solicitud de registro de usuario");
-        return request.bodyToMono(UserRequest.class)
-                .doOnNext(userRequest -> log.debug("Datos recibidos: {}", userRequest))
-                .map(this::convertToUser)
-                .flatMap(userUseCase::save)
-                .flatMap(user -> {
-                    log.info("Usuario registrado exitosamente con ID: {}", user.getId());
-                    return ServerResponse.ok()
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .bodyValue(user);
+
+        // Validar que el usuario autenticado tenga permisos (ADMIN/ASESOR)
+        return getAuthenticatedUser(request)
+                .flatMap(authenticatedUser -> {
+                    if (!hasAdminOrAsesorRole(authenticatedUser)) {
+                        log.warn("Usuario {} sin permisos intentó registrar usuario",
+                                authenticatedUser.getCorreoElectronico());
+                        return ServerResponse.status(403)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .bodyValue(createErrorResponse("No tiene permisos para registrar usuarios"));
+                    }
+
+                    return request.bodyToMono(UserRequest.class)
+                            .doOnNext(userRequest -> log.debug("Datos recibidos: {}", userRequest))
+                            .map(this::convertToUser)
+                            .flatMap(userUseCase::save)
+                            .flatMap(user -> {
+                                log.info("Usuario registrado exitosamente con ID: {} por {}",
+                                        user.getId(), authenticatedUser.getCorreoElectronico());
+
+                                // No retornar la contraseña en la respuesta
+                                User userResponse = user.toBuilder().password(null).build();
+
+                                return ServerResponse.ok()
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .bodyValue(userResponse);
+                            });
                 })
                 .onErrorResume(EmailAlreadyExistsException.class, e -> {
                     log.warn("Intento de registro con email duplicado: {}", e.getMessage());
@@ -52,7 +71,6 @@ private final UserUseCase userUseCase;
                 });
     }
 
-
     public Mono<ServerResponse> existsByDocument(ServerRequest request) {
         String documento = request.pathVariable("documento");
         log.debug("Verificando existencia de usuario con documento: {}", documento);
@@ -72,6 +90,15 @@ private final UserUseCase userUseCase;
                 });
     }
 
+    private Mono<AuthenticatedUser> getAuthenticatedUser(ServerRequest request) {
+        return Mono.justOrEmpty(request.attribute("authenticatedUser"))
+                .cast(AuthenticatedUser.class)
+                .switchIfEmpty(Mono.error(new RuntimeException("Usuario no autenticado")));
+    }
+
+    private boolean hasAdminOrAsesorRole(AuthenticatedUser user) {
+        return user.getRol() == User.Rol.ADMIN || user.getRol() == User.Rol.ASESOR;
+    }
 
     private User convertToUser(UserRequest userRequest) {
         return User.builder()
@@ -83,6 +110,8 @@ private final UserUseCase userUseCase;
                 .telefono(userRequest.getTelefono())
                 .correoElectronico(userRequest.getCorreoElectronico())
                 .salarioBase(userRequest.getSalarioBase())
+                .password(userRequest.getPassword())
+                .rol(userRequest.getRol())
                 .build();
     }
 
@@ -93,5 +122,4 @@ private final UserUseCase userUseCase;
     // Clases auxiliares para las respuestas
     public record ErrorResponse(String message, long timestamp) {}
     public record ExistsResponse(boolean exists) {}
-
 }

@@ -2,97 +2,58 @@ package co.com.pragma.usecase.user;
 
 import co.com.pragma.model.user.User;
 import co.com.pragma.model.user.exceptions.EmailAlreadyExistsException;
-import co.com.pragma.model.user.exceptions.UserValidationException;
+import co.com.pragma.model.user.gateways.PasswordEncoder;
 import co.com.pragma.model.user.gateways.UserRepository;
+import co.com.pragma.usecase.user.utils.ValidationUtils;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
-
-import java.math.BigDecimal;
-import java.util.regex.Pattern;
 
 @RequiredArgsConstructor
 public class UserUseCase {
 
     private final UserRepository userRepository;
-
-    private static final Pattern EMAIL_PATTERN =
-            Pattern.compile("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
-
-    private static final BigDecimal MIN_SALARY = BigDecimal.ZERO;
-    private static final BigDecimal MAX_SALARY = new BigDecimal("15000000");
+    private final PasswordEncoder passwordEncoder;
 
     public Mono<User> save(User user) {
-        return Mono.defer(() -> {
-            try {
-                validateUser(user); // si falla, lanzamos excepción y la capturamos
-            } catch (UserValidationException e) {
-                return Mono.error(e);
-            }
-
-            return userRepository.existsByCorreo(user.getCorreoElectronico())
-                    .flatMap(exists -> {
-                        if (exists) {
-                            return Mono.error(new EmailAlreadyExistsException("El correo ya existe"));
-                        }
-                        return userRepository.save(user);
-                    });
-        });
+        return validateUser(user)
+                .then(checkEmailExists(user.getCorreoElectronico()))
+                .then(encodePassword(user))
+                .flatMap(userRepository::save);
     }
-
 
     public Mono<Boolean> existsByDocumento(String documento) {
         return userRepository.existsByDocumentoIdentidad(documento);
     }
 
-    private void validateUser(User user) {
-        // Validar nombres
-        if (user.getNombres() == null || user.getNombres().trim().isEmpty()) {
-            throw new UserValidationException("El campo nombres es obligatorio");
-        }
+    private Mono<Void> validateUser(User user) {
+        return Mono.fromRunnable(() -> {
+            ValidationUtils.validateNotBlank(user.getNombres(), "Los nombres son obligatorios");
+            ValidationUtils.validateNotBlank(user.getApellidos(), "Los apellidos son obligatorios");
+            ValidationUtils.validateNotBlank(user.getCorreoElectronico(), "El correo electrónico es obligatorio");
+            ValidationUtils.validateNotNull(user.getSalarioBase(), "El salario base es obligatorio");
+            ValidationUtils.validateNotBlank(user.getPassword(), "La contraseña es obligatoria");
+            ValidationUtils.validateNotNull(user.getRol(), "El rol es obligatorio");
 
-        // Validar apellidos
-        if (user.getApellidos() == null || user.getApellidos().trim().isEmpty()) {
-            throw new UserValidationException("El campo apellidos es obligatorio");
-        }
+            ValidationUtils.validateEmail(user.getCorreoElectronico());
+            ValidationUtils.validateSalaryRange(user.getSalarioBase());
+            ValidationUtils.validatePasswordLength(user.getPassword());
+        });
+    }
 
-        // Validar documento identidad
-        String documento = user.getDocumentoIdentidad();
-        if (documento == null || documento.trim().isEmpty()) {
-            throw new UserValidationException("El campo documento identidad es obligatorio");
-        }
+    private Mono<Void> checkEmailExists(String correoElectronico) {
+        return userRepository.existsByCorreo(correoElectronico)
+                .flatMap(exists -> {
+                    if (Boolean.TRUE.equals(exists)) {
+                        return Mono.error(new EmailAlreadyExistsException("El correo electrónico ya está registrado"));
+                    }
+                    return Mono.empty();
+                });
+    }
 
-        // Debe ser solo números
-        if (!documento.matches("\\d+")) {
-            throw new UserValidationException("El documento identidad debe contener solo números");
-        }
-
-        // Longitud mínima y máxima (ejemplo: entre 5 y 15 dígitos)
-        if (documento.length() < 5 || documento.length() > 15) {
-            throw new UserValidationException("El documento identidad debe tener entre 5 y 15 dígitos");
-        }
-
-        // Evitar documentos con todos los dígitos iguales (0000, 1111, 2222, etc.)
-        if (documento.chars().allMatch(c -> c == documento.charAt(0))) {
-            throw new UserValidationException("El documento identidad no puede tener todos los dígitos iguales");
-        }
-
-        // Validar correo electrónico
-        if (user.getCorreoElectronico() == null || user.getCorreoElectronico().trim().isEmpty()) {
-            throw new UserValidationException("El campo correo_electronico es obligatorio");
-        }
-
-        if (!EMAIL_PATTERN.matcher(user.getCorreoElectronico()).matches()) {
-            throw new UserValidationException("El formato del correo electrónico no es válido");
-        }
-
-        // Validar salario
-        if (user.getSalarioBase() == null) {
-            throw new UserValidationException("El campo salario_base es obligatorio");
-        }
-
-        if (user.getSalarioBase().compareTo(MIN_SALARY) < 0 ||
-                user.getSalarioBase().compareTo(MAX_SALARY) > 0) {
-            throw new UserValidationException("El salario base debe estar entre 0 y 15,000,000");
-        }
+    private Mono<User> encodePassword(User user) {
+        return passwordEncoder.encode(user.getPassword())
+                .map(encodedPassword -> user.toBuilder()
+                        .password(encodedPassword)
+                        .build());
     }
 }

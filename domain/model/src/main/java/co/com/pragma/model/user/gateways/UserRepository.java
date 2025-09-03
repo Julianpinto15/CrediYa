@@ -7,4 +7,8 @@ public interface UserRepository {
     Mono<User> save(User user);
     Mono<Boolean> existsByCorreo(String correo);
     Mono<Boolean> existsByDocumentoIdentidad(String documentoIdentidad);
+
+    // Nuevos métodos para autenticación
+    Mono<User> findByCorreoElectronico(String correoElectronico);
+    Mono<User> findById(String id);
 }

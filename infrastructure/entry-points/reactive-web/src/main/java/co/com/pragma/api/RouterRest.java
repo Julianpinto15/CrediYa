@@ -1,11 +1,13 @@
 package co.com.pragma.api;
 
+import co.com.pragma.api.config.AuthenticationFilter;
 import co.com.pragma.api.dto.SolicitudResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.RouterOperation;
 import org.springdoc.core.annotations.RouterOperations;
 import org.springframework.context.annotation.Bean;
@@ -24,6 +26,11 @@ import co.com.pragma.model.user.User;
 @Tag(name = "CrediYa API", description = "Endpoints para gestión de usuarios y solicitudes de préstamo")
 public class RouterRest {
 
+    private final AuthenticationFilter authenticationFilter;
+
+    public RouterRest(AuthenticationFilter authenticationFilter) {
+        this.authenticationFilter = authenticationFilter;
+    }
     //http://localhost:8080/webjars/swagger-ui/index.html#/
 
     @Bean
@@ -133,6 +140,16 @@ public class RouterRest {
                 .route()
                 .path("/api/v1/solicitudes", builder -> builder
                         .POST("", handler::registrarSolicitud)
+                )
+                .build();
+    }
+
+    public RouterFunction<ServerResponse> AuthRoutes(AuthHandler handler) {
+        return RouterFunctions
+                .route()
+                .path("/api/v1/login", builder -> builder
+                        .POST("", handler::login)
+                        .filter(authenticationFilter)// Endpoints protegidos - aplicar filtro de autenticación
                 )
                 .build();
     }

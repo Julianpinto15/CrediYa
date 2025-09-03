@@ -10,11 +10,22 @@ adapters:
     username: postgres
     password: root
 
+jwt:
+    secret: ${JWT_SECRET:mySecretKey1234567890123456789012345678901234567890}
+    token-validity-in-seconds: ${JWT_TOKEN_VALIDITY:3600} # 1 hora
+    refresh-token-validity-in-seconds: ${JWT_REFRESH_TOKEN_VALIDITY:86400} # 24 horas
+
 logging:
   level:
     co.com.pragma: DEBUG
     io.r2dbc.postgresql.QUERY: DEBUG
     org.springframework.r2dbc: DEBUG
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
 
 management:
   endpoints:

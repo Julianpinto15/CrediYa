@@ -59,4 +59,26 @@ public class MyReactiveRepositoryAdapter extends ReactiveAdapterOperations<User,
                         documentoIdentidad, error.getMessage()));
     }
 
+    @Override
+    public Mono<User> findByCorreoElectronico(String correoElectronico) {
+        log.debug("Buscando usuario por correo para autenticación: {}", correoElectronico);
+
+        return repository.findByCorreoElectronicoForAuth(correoElectronico)
+                .map(UserData::toEntity)
+                .doOnSuccess(user -> log.debug("Usuario encontrado para autenticación: {}",
+                        user != null ? user.getCorreoElectronico() : "null"))
+                .doOnError(error -> log.error("Error al buscar usuario por correo: {}", error.getMessage()));
+    }
+
+    @Override
+    public Mono<User> findById(String id) {
+        log.debug("Buscando usuario por ID: {}", id);
+
+        return repository.findById(id)
+                .map(UserData::toEntity)
+                .doOnSuccess(user -> log.debug("Usuario encontrado por ID: {}",
+                        user != null ? user.getId() : "null"))
+                .doOnError(error -> log.error("Error al buscar usuario por ID: {}", error.getMessage()));
+    }
+
 }
