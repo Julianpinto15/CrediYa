@@ -15,7 +15,7 @@ import reactor.core.publisher.Mono;
 @Repository
 public class MyReactiveRepositoryAdapter extends ReactiveAdapterOperations<User,
         UserData,
-        String,
+        Integer,
         MyReactiveRepository
         > implements UserRepository {
 
@@ -34,17 +34,17 @@ public class MyReactiveRepositoryAdapter extends ReactiveAdapterOperations<User,
                 .doOnError(error -> log.error("Error verificando existencia por correo {}: {}", correo, error.getMessage()));
     }
 
-    @Override
+
     @Transactional
+    @Override
     public Mono<User> save(User user) {
-        log.debug("Guardando usuario: {}", user.getCorreoElectronico());
-        return super.save(user)
-                .doOnSuccess(savedUser ->
-                        log.info("Usuario guardado exitosamente con ID: {} y correo: {}",
-                                savedUser.getId(), savedUser.getCorreoElectronico()))
-                .doOnError(error ->
-                        log.error("Error guardando usuario con correo {}: {}",
-                                user.getCorreoElectronico(), error.getMessage()));
+        log.debug("Guardando usuario en base de datos: {}", user.getCorreoElectronico());
+
+        return Mono.fromCallable(() -> UserData.fromEntity(user))
+                .flatMap(repository::save)
+                .map(UserData::toEntity)
+                .doOnSuccess(savedUser -> log.debug("Usuario guardado con ID: {}", savedUser.getId()))
+                .doOnError(error -> log.error("Error al guardar usuario: {}", error.getMessage()));
     }
 
     @Override
@@ -63,7 +63,16 @@ public class MyReactiveRepositoryAdapter extends ReactiveAdapterOperations<User,
     public Mono<User> findByCorreoElectronico(String correoElectronico) {
         log.debug("Buscando usuario por correo para autenticación: {}", correoElectronico);
 
-        return repository.findByCorreoElectronicoForAuth(correoElectronico)
+        return repository.findByCorreoElectronico(correoElectronico)
+                .doOnNext(userData -> log.debug("UserData encontrado - ID: {}, Correo: {}, Password presente: {}",
+                        userData.getId(), userData.getCorreoElectronico(), userData.getPassword() != null))
+                .filter(userData -> {
+                    boolean hasValidPassword = userData.getPassword() != null && !userData.getPassword().trim().isEmpty();
+                    if (!hasValidPassword) {
+                        log.debug("Usuario {} no tiene password válido", correoElectronico);
+                    }
+                    return hasValidPassword;
+                })
                 .map(UserData::toEntity)
                 .doOnSuccess(user -> log.debug("Usuario encontrado para autenticación: {}",
                         user != null ? user.getCorreoElectronico() : "null"))
@@ -74,11 +83,17 @@ public class MyReactiveRepositoryAdapter extends ReactiveAdapterOperations<User,
     public Mono<User> findById(String id) {
         log.debug("Buscando usuario por ID: {}", id);
 
-        return repository.findById(id)
-                .map(UserData::toEntity)
-                .doOnSuccess(user -> log.debug("Usuario encontrado por ID: {}",
-                        user != null ? user.getId() : "null"))
-                .doOnError(error -> log.error("Error al buscar usuario por ID: {}", error.getMessage()));
+        try {
+            Integer intId = Integer.valueOf(id);
+            return repository.findById(intId)
+                    .map(UserData::toEntity)
+                    .doOnSuccess(user -> log.debug("Usuario encontrado por ID: {}",
+                            user != null ? user.getId() : "null"))
+                    .doOnError(error -> log.error("Error al buscar usuario por ID: {}", error.getMessage()));
+        } catch (NumberFormatException e) {
+            log.error("ID inválido, no es un número: {}", id);
+            return Mono.empty();
+        }
     }
 
 }

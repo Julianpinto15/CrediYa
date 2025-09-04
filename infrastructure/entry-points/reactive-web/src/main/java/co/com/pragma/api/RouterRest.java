@@ -144,13 +144,75 @@ public class RouterRest {
                 .build();
     }
 
-    public RouterFunction<ServerResponse> AuthRoutes(AuthHandler handler) {
+    @Bean
+    @RouterOperations({
+            @RouterOperation(
+                    path = "/api/v1/clientes/register",
+                    method = RequestMethod.POST,
+                    operation = @Operation(
+                            operationId = "registrarCliente",
+                            summary = "Registro público de clientes",
+                            description = "Permite a un cliente crear su cuenta en el sistema. Siempre tendrá rol CLIENTE.",
+                            tags = {"Clientes"},
+                            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                                    required = true,
+                                    description = "Datos básicos del cliente a registrar",
+                                    content = @Content(
+                                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                            schema = @Schema(implementation = UserRequest.class)
+                                    )
+                            ),
+                            responses = {
+                                    @ApiResponse(
+                                            responseCode = "200",
+                                            description = "Cliente registrado exitosamente",
+                                            content = @Content(
+                                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                                    schema = @Schema(implementation = User.class)
+                                            )
+                                    ),
+                                    @ApiResponse(
+                                            responseCode = "400",
+                                            description = "Datos inválidos - Error de validación"
+                                    ),
+                                    @ApiResponse(
+                                            responseCode = "409",
+                                            description = "Correo ya registrado"
+                                    )
+                            }
+                    )
+            )
+    })
+    public RouterFunction<ServerResponse> clienteRoutes(UserHandler handler) {
         return RouterFunctions
                 .route()
-                .path("/api/v1/login", builder -> builder
-                        .POST("", handler::login)
-                        .filter(authenticationFilter)// Endpoints protegidos - aplicar filtro de autenticación
+                .path("/api/v1/clientes", builder -> builder
+                        .POST("/register", handler::registrarCliente) // Público
                 )
                 .build();
     }
+
+
+    @Bean
+    @RouterOperations({
+            @RouterOperation(
+                    path = "/api/v1/login",
+                    method = RequestMethod.POST,
+                    operation = @Operation(
+                            operationId = "login",
+                            summary = "Autenticación de usuario",
+                            description = "Permite a un usuario autenticarse con correo y contraseña. Devuelve un JWT si es exitoso.",
+                            tags = {"Auth"}
+                    )
+            )
+    })
+    public RouterFunction<ServerResponse> authRoutes(AuthHandler handler) {
+        return RouterFunctions
+                .route()
+                .path("/api/v1/login", builder -> builder
+                        .POST("", handler::login) // 👈 sin filtro
+                )
+                .build();
+    }
+
 }

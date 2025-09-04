@@ -51,7 +51,7 @@ class MyReactiveRepositoryAdapterTest {
                 .build();
 
         userData = new UserData();
-        userData.setId("1");
+        userData.setId(1);
         userData.setNombres("Juan");
         userData.setApellidos("Perez");
         userData.setDocumentoIdentidad("123456789");

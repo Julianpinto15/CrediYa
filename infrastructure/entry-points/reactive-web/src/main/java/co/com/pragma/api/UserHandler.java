@@ -21,6 +21,41 @@ public class UserHandler {
 
     private final UserUseCase userUseCase;
 
+    public Mono<ServerResponse> registrarCliente(ServerRequest request) {
+        log.debug("Registro público de cliente");
+
+        return request.bodyToMono(UserRequest.class)
+                .map(userRequest -> {
+                    // Forzamos rol CLIENTE, no dejamos que el JSON lo ponga
+                    return convertToUser(userRequest).toBuilder()
+                            .rol(User.Rol.CLIENTE)
+                            .build();
+                })
+                .flatMap(userUseCase::save)
+                .flatMap(user -> {
+                    User userResponse = user.toBuilder().password(null).build();
+                    return ServerResponse.ok()
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .bodyValue(userResponse);
+                })
+                .onErrorResume(EmailAlreadyExistsException.class, e ->
+                        ServerResponse.status(409)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .bodyValue(createErrorResponse("El correo electrónico ya está registrado"))
+                )
+                .onErrorResume(UserValidationException.class, e ->
+                        ServerResponse.badRequest()
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .bodyValue(createErrorResponse(e.getMessage()))
+                )
+                .onErrorResume(Exception.class, e ->
+                        ServerResponse.status(500)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .bodyValue(createErrorResponse("Error interno del servidor"))
+                );
+    }
+
+
     public Mono<ServerResponse> registrarUsuario(ServerRequest request) {
         log.debug("Recibiendo solicitud de registro de usuario");
 
