@@ -59,7 +59,6 @@ public class UserHandler {
     public Mono<ServerResponse> registrarUsuario(ServerRequest request) {
         log.debug("Recibiendo solicitud de registro de usuario");
 
-        // Validar que el usuario autenticado tenga permisos (ADMIN/ASESOR)
         return getAuthenticatedUser(request)
                 .flatMap(authenticatedUser -> {
                     if (!hasAdminOrAsesorRole(authenticatedUser)) {
@@ -72,13 +71,15 @@ public class UserHandler {
 
                     return request.bodyToMono(UserRequest.class)
                             .doOnNext(userRequest -> log.debug("Datos recibidos: {}", userRequest))
+                            .doOnError(error -> log.error("Error al deserializar JSON: {}", error.getMessage(), error))
+                            // 🔧 AGREGAR VALIDACIÓN MANUAL
+                            .flatMap(this::validateUserRequest)
                             .map(this::convertToUser)
                             .flatMap(userUseCase::save)
                             .flatMap(user -> {
                                 log.info("Usuario registrado exitosamente con ID: {} por {}",
                                         user.getId(), authenticatedUser.getCorreoElectronico());
 
-                                // No retornar la contraseña en la respuesta
                                 User userResponse = user.toBuilder().password(null).build();
 
                                 return ServerResponse.ok()
@@ -106,6 +107,40 @@ public class UserHandler {
                 });
     }
 
+    private Mono<UserRequest> validateUserRequest(UserRequest userRequest) {
+        return Mono.fromCallable(() -> {
+            log.debug("Validando UserRequest: {}", userRequest);
+
+            // Validaciones básicas
+            if (userRequest.getNombres() == null || userRequest.getNombres().trim().isEmpty()) {
+                throw new UserValidationException("El campo nombres es obligatorio");
+            }
+            if (userRequest.getApellidos() == null || userRequest.getApellidos().trim().isEmpty()) {
+                throw new UserValidationException("El campo apellidos es obligatorio");
+            }
+            if (userRequest.getCorreoElectronico() == null || userRequest.getCorreoElectronico().trim().isEmpty()) {
+                throw new UserValidationException("El correo electrónico es obligatorio");
+            }
+            if (userRequest.getPassword() == null || userRequest.getPassword().trim().isEmpty()) {
+                throw new UserValidationException("La contraseña es obligatoria");
+            }
+            if (userRequest.getRol() == null) {
+                throw new UserValidationException("El rol es obligatorio");
+            }
+            if (userRequest.getSalarioBase() == null) {
+                throw new UserValidationException("El salario base es obligatorio");
+            }
+
+            // Validación de email básica
+            if (!userRequest.getCorreoElectronico().contains("@")) {
+                throw new UserValidationException("El formato del correo electrónico no es válido");
+            }
+
+            log.debug("UserRequest validado correctamente");
+            return userRequest;
+        });
+    }
+
     public Mono<ServerResponse> existsByDocument(ServerRequest request) {
         String documento = request.pathVariable("documento");
         log.debug("Verificando existencia de usuario con documento: {}", documento);
@@ -126,9 +161,12 @@ public class UserHandler {
     }
 
     private Mono<AuthenticatedUser> getAuthenticatedUser(ServerRequest request) {
-        return Mono.justOrEmpty(request.attribute("authenticatedUser"))
-                .cast(AuthenticatedUser.class)
-                .switchIfEmpty(Mono.error(new RuntimeException("Usuario no autenticado")));
+        return Mono.deferContextual(contextView -> {
+            if (contextView.hasKey("authenticatedUser")) {
+                return Mono.just(contextView.get("authenticatedUser"));
+            }
+            return Mono.error(new RuntimeException("Usuario no autenticado"));
+        });
     }
 
     private boolean hasAdminOrAsesorRole(AuthenticatedUser user) {
