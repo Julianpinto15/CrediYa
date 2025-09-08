@@ -8,8 +8,10 @@ import co.com.pragma.r2dbc.repository.EstadoSolicitudReactiveRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.reactivecommons.utils.ObjectMapper;
 import org.springframework.stereotype.Repository;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -33,5 +35,14 @@ public class EstadoSolicitudReactiveRepositoryAdapter extends ReactiveAdapterOpe
                 .map(data -> mapper.mapBuilder(data, EstadoSolicitud.EstadoSolicitudBuilder.class).build())
                 .doOnSuccess(estado -> log.debug("Estado encontrado: {}", estado.getNombre()))
                 .doOnError(error -> log.error("Error buscando estado por nombre {}: {}", nombre, error.getMessage()));
+    }
+
+    @Override
+    public Flux<EstadoSolicitud> findByNombres(List<String> nombres) {
+        log.debug("Buscando estados por nombres: {}", nombres);
+        return repository.findByNombreIn(nombres)
+                .map(data -> mapper.mapBuilder(data, EstadoSolicitud.EstadoSolicitudBuilder.class).build())
+                .doOnNext(estado -> log.debug("Estado encontrado: {}", estado.getNombre()))
+                .doOnError(error -> log.error("Error buscando estados por nombres {}: {}", nombres, error.getMessage()));
     }
 }

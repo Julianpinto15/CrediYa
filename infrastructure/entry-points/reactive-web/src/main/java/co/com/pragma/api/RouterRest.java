@@ -192,10 +192,10 @@ public class RouterRest {
                         .POST("", userHandler::registrarUsuario)           // Solo ADMIN/ASESOR
                         .GET("/exists/{documento}", userHandler::existsByDocument) // Cualquier autenticado
                 )
-                /*.path("/api/v1/solicitudes", builder -> builder
+                .path("/api/v1/solicitudes", builder -> builder
                         .POST("", solicitudHandler::registrarSolicitud)   // Solo CLIENTE
                         .GET("", solicitudHandler::listarSolicitudes)     // Solo ASESOR (agregar este método si no existe)
-                )*/
+                )
                 // ⚡ APLICAR FILTRO DE AUTENTICACIÓN A TODAS LAS RUTAS PROTEGIDAS
                 .filter(authenticationFilter)
                 .build();

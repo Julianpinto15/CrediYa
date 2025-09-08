@@ -9,6 +9,7 @@ import co.com.pragma.model.solicitud.gateways.SolicitudRepository;
 import co.com.pragma.usecase.solicitud.utils.ValidationUtils;
 import lombok.RequiredArgsConstructor;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
@@ -86,5 +87,32 @@ public class SolicitudUseCase {
         return estadoSolicitudRepository.findByNombre(ESTADO_INICIAL)
                 .switchIfEmpty(Mono.error(new SolicitudValidationException("Estado inicial '" + ESTADO_INICIAL + "' no encontrado")))
                 .map(estado -> solicitud.toBuilder().estado(estado).build());
+    }
+
+    /**
+     * Lista las solicitudes que requieren revisión manual por parte de un asesor.
+     * Filtra por los estados: "Pendiente de revisión", "Rechazadas", "Revision manual"
+     */
+    public Flux<Solicitud> listarSolicitudesPendientes(int page, int size) {
+        List<String> estadosPendientes = List.of(
+                "Pendiente de revisión",
+                "Rechazadas",
+                "Revision manual"
+        );
+
+        return solicitudRepository.findByEstadosWithPagination(estadosPendientes, page, size);
+    }
+
+    /**
+     * Cuenta el total de solicitudes pendientes para paginación
+     */
+    public Mono<Long> contarSolicitudesPendientes() {
+        List<String> estadosPendientes = List.of(
+                "Pendiente de revisión",
+                "Rechazadas",
+                "Revision manual"
+        );
+
+        return solicitudRepository.countByEstados(estadosPendientes);
     }
 }

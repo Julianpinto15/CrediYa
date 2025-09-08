@@ -14,7 +14,14 @@ import org.reactivecommons.utils.ObjectMapper;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.reactive.TransactionalOperator;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import org.springframework.data.domain.Sort;
+
+import org.springframework.data.relational.core.query.Query;
+import org.springframework.data.relational.core.query.Criteria;
+import java.util.List;
 
 import java.util.UUID;
 
@@ -119,6 +126,56 @@ public class SolicitudReactiveRepositoryAdapter
                 .estadoSolicitudId(estadoSolicitudId)
                 .fechaCreacion(solicitud.getFechaCreacion())
                 .build();
+    }
+
+    @Override
+    public Flux<Solicitud> findByEstadosWithPagination(List<String> estados, int page, int size) {
+        log.debug("Buscando solicitudes por estados {} - página: {}, tamaño: {}", estados, page, size);
+
+        return estadoSolicitudRepository.findByNombres(estados)
+                .map(EstadoSolicitud::getId)
+                .collectList()
+                .flux()
+                .flatMap(estadoIds -> {
+                    if (estadoIds.isEmpty()) {
+                        log.debug("No se encontraron estados válidos, retornando vacío");
+                        return Flux.empty();
+                    }
+
+                    // Crear consulta con paginación
+                    Query query = Query.query(Criteria.where("estado_solicitud_id").in(estadoIds))
+                            .sort(Sort.by(Sort.Direction.DESC, "fecha_creacion"))
+                            .offset((long) page * size)
+                            .limit(size);
+
+                    return r2dbcEntityTemplate.select(SolicitudData.class)
+                            .matching(query)
+                            .all()
+                            .flatMap(this::buildSolicitudFromData)
+                            .doOnNext(solicitud -> log.debug("Solicitud encontrada: ID={}, Estado={}",
+                                    solicitud.getId(), solicitud.getEstado().getNombre()));
+                })
+                .doOnComplete(() -> log.debug("Consulta paginada completada"));
+    }
+
+    @Override
+    public Mono<Long> countByEstados(List<String> estados) {
+        log.debug("Contando solicitudes por estados: {}", estados);
+
+        return estadoSolicitudRepository.findByNombres(estados)
+                .map(EstadoSolicitud::getId)
+                .collectList()
+                .flatMap(estadoIds -> {
+                    if (estadoIds.isEmpty()) {
+                        log.debug("No se encontraron estados válidos para contar");
+                        return Mono.just(0L);
+                    }
+
+                    Query query = Query.query(Criteria.where("estado_solicitud_id").in(estadoIds));
+
+                    return r2dbcEntityTemplate.count(query, SolicitudData.class);
+                })
+                .doOnNext(count -> log.debug("Total de solicitudes encontradas: {}", count));
     }
 }
 

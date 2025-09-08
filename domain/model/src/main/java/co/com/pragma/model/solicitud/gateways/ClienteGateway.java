@@ -4,4 +4,5 @@ import reactor.core.publisher.Mono;
 
 public interface ClienteGateway {
     Mono<Boolean> existsByDocumento(String documento);
+
 }
