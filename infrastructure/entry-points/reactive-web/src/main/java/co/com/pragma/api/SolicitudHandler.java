@@ -21,6 +21,9 @@ import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 
 @Component
@@ -91,20 +94,18 @@ public class SolicitudHandler {
     }
 
     public Mono<ServerResponse> listarSolicitudes(ServerRequest request) {
-        log.debug("Listando solicitudes para revisión manual");
+        log.debug("=== INICIANDO LISTADO DE SOLICITUDES ===");
 
         return getAuthenticatedUser(request)
+                .doOnNext(user -> log.debug("Usuario autenticado: {}, Rol: {}", user.getCorreoElectronico(), user.getRol()))
                 .flatMap(authenticatedUser -> {
-                    // Validar que sea ASESOR (ya se valida en el filtro, pero por seguridad)
                     if (authenticatedUser.getRol() != User.Rol.ASESOR) {
-                        log.warn("Usuario {} sin permisos de asesor intentó listar solicitudes",
-                                authenticatedUser.getCorreoElectronico());
+                        log.warn("Usuario {} sin permisos de asesor intentó listar solicitudes", authenticatedUser.getCorreoElectronico());
                         return ServerResponse.status(403)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .bodyValue(createErrorResponse("Solo los asesores pueden listar solicitudes"));
                     }
 
-                    // Obtener parámetros de paginación
                     int page = request.queryParam("page")
                             .map(Integer::parseInt)
                             .filter(p -> p >= 0)
@@ -112,54 +113,81 @@ public class SolicitudHandler {
 
                     int size = request.queryParam("size")
                             .map(Integer::parseInt)
-                            .filter(s -> s > 0 && s <= 100) // Limitar tamaño máximo
+                            .filter(s -> s > 0 && s <= 100)
                             .orElse(10);
 
-                    log.debug("Listando solicitudes - página: {}, tamaño: {}", page, size);
+                    log.debug("=== PARÁMETROS DE PAGINACIÓN ===");
+                    log.debug("Página solicitada: {}", page);
+                    log.debug("Tamaño solicitado: {}", size);
 
-                    // Obtener solicitudes y total en paralelo
-                    Mono<java.util.List<SolicitudListadoResponse.SolicitudItem>> solicitudesMono =
-                            solicitudUseCase.listarSolicitudesPendientes(page, size)
-                                    .map(this::convertToListadoItem)
-                                    .collectList();
+                    Mono<List<SolicitudListadoResponse.SolicitudItem>> solicitudesMono = solicitudUseCase.listarSolicitudesPendientes(page, size)
+                            .map(solicitudes -> {
+                                log.debug("=== MAPEANDO SOLICITUDES ===");
+                                List<SolicitudListadoResponse.SolicitudItem> items = solicitudes.stream()
+                                        .map(solicitud -> {
+                                            log.debug("Mapeando solicitud ID: {}", solicitud.getId());
+                                            SolicitudListadoResponse.SolicitudItem item = SolicitudMapper.toSolicitudItem(solicitud);
+                                            log.debug("Item mapeado - Email: {}, Nombre: {}", item.getEmail(), item.getNombre());
+                                            return item;
+                                        })
+                                        .collect(Collectors.toList());
+                                log.debug("Total items mapeados: {}", items.size());
+                                return items;
+                            })
+                            .defaultIfEmpty(Collections.emptyList()) // Maneja el caso de lista vacía
+                            .doOnError(error -> log.error("Error al obtener/mapear solicitudes: {}", error.getMessage(), error));
 
-                    Mono<Long> totalMono = solicitudUseCase.contarSolicitudesPendientes();
+                    Mono<Long> totalMono = solicitudUseCase.contarSolicitudesPendientes()
+                            .defaultIfEmpty(0L) // Maneja el caso de conteo 0
+                            .doOnNext(total -> log.debug("Total de solicitudes pendientes: {}", total))
+                            .doOnError(error -> log.error("Error al contar solicitudes: {}", error.getMessage(), error));
 
                     return Mono.zip(solicitudesMono, totalMono)
-                            .map(tuple -> {
-                                java.util.List<SolicitudListadoResponse.SolicitudItem> solicitudes = tuple.getT1();
+                            .flatMap(tuple -> {
+                                List<SolicitudListadoResponse.SolicitudItem> solicitudes = tuple.getT1();
                                 Long total = tuple.getT2();
 
-                                // Crear información de paginación
                                 int totalPages = (int) Math.ceil((double) total / size);
                                 SolicitudListadoResponse.PageInfo pageInfo = new SolicitudListadoResponse.PageInfo(
                                         page, size, total, totalPages,
                                         page == 0,
-                                        page >= totalPages - 1
+                                        total == 0 || page >= totalPages - 1
                                 );
 
-                                return new SolicitudListadoResponse(solicitudes, pageInfo);
-                            })
-                            .flatMap(response -> {
-                                log.info("Listado de solicitudes completado - {} solicitudes encontradas para asesor: {}",
+                                log.debug("=== INFORMACIÓN DE PAGINACIÓN ===");
+                                log.debug("Página actual: {}", page);
+                                log.debug("Tamaño de página: {}", size);
+                                log.debug("Total elementos: {}", total);
+                                log.debug("Total páginas: {}", totalPages);
+                                log.debug("Es primera página: {}", pageInfo.isPrimera());
+                                log.debug("Es última página: {}", pageInfo.isUltima());
+
+                                SolicitudListadoResponse response = new SolicitudListadoResponse(solicitudes, pageInfo);
+                                log.debug("=== RESPUESTA FINAL CREADA ===");
+                                log.debug("Elementos en respuesta: {}", response.getSolicitudes().size());
+
+                                log.info("=== LISTADO COMPLETADO ===");
+                                log.info("Solicitudes en respuesta final: {} para asesor: {}",
                                         response.getSolicitudes().size(), authenticatedUser.getCorreoElectronico());
+                                log.debug("Respuesta completa: {}", response);
 
                                 return ServerResponse.ok()
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .bodyValue(response);
+                            })
+                            .onErrorResume(NumberFormatException.class, e -> {
+                                log.warn("Parámetros de paginación inválidos: {}", e.getMessage());
+                                return ServerResponse.badRequest()
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .bodyValue(createErrorResponse("Parámetros de paginación inválidos"));
+                            })
+                            .onErrorResume(Exception.class, e -> {
+                                log.error("=== ERROR INESPERADO ===");
+                                log.error("Error al listar solicitudes: {}", e.getMessage(), e);
+                                return ServerResponse.status(500)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .bodyValue(createErrorResponse("Error interno del servidor"));
                             });
-                })
-                .onErrorResume(NumberFormatException.class, e -> {
-                    log.warn("Parámetros de paginación inválidos: {}", e.getMessage());
-                    return ServerResponse.badRequest()
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .bodyValue(createErrorResponse("Parámetros de paginación inválidos"));
-                })
-                .onErrorResume(Exception.class, e -> {
-                    log.error("Error inesperado al listar solicitudes: {}", e.getMessage(), e);
-                    return ServerResponse.status(500)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .bodyValue(createErrorResponse("Error interno del servidor"));
                 });
     }
 

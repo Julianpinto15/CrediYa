@@ -1,6 +1,7 @@
 package co.com.pragma.api.mapper;
 
 import co.com.pragma.api.dto.SolicitudCreateRequest;
+import co.com.pragma.api.dto.SolicitudListadoResponse;
 import co.com.pragma.api.dto.SolicitudResponse;
 import co.com.pragma.model.solicitud.Solicitud;
 
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 @Component
 public class SolicitudMapper {
@@ -83,4 +85,36 @@ public class SolicitudMapper {
 
         return response;
     }
+
+    public static SolicitudListadoResponse.SolicitudItem toSolicitudItem(Solicitud solicitud) {
+        return new SolicitudListadoResponse.SolicitudItem(
+                solicitud.getId(),
+                solicitud.getMonto(),
+                solicitud.getPlazo(),
+                solicitud.getEmailCliente(),
+                solicitud.getNombreCliente(),
+                solicitud.getTipoPrestamo() != null ? solicitud.getTipoPrestamo().getNombre() : null,
+                solicitud.getTasaInteres(),
+                solicitud.getEstado() != null ? solicitud.getEstado().getNombre() : "Sin estado",
+                solicitud.getSalarioCliente(),
+                calcularMontoMensual(solicitud.getMonto(), solicitud.getPlazo(), solicitud.getTasaInteres()),
+                solicitud.getFechaCreacion()
+        );
+    }
+
+    private static BigDecimal calcularMontoMensual(BigDecimal monto, Integer plazo, BigDecimal tasaInteres) {
+        if (monto == null || plazo == null || tasaInteres == null || plazo <= 0) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal tasaMensual = tasaInteres.divide(BigDecimal.valueOf(100 * 12), 8, RoundingMode.HALF_UP);
+        if (tasaMensual.compareTo(BigDecimal.ZERO) == 0) {
+            return monto.divide(BigDecimal.valueOf(plazo), 2, RoundingMode.HALF_UP);
+        }
+        BigDecimal unoPlusTasa = BigDecimal.ONE.add(tasaMensual);
+        BigDecimal factorPotencia = unoPlusTasa.pow(plazo);
+        BigDecimal numerador = monto.multiply(tasaMensual).multiply(factorPotencia);
+        BigDecimal denominador = factorPotencia.subtract(BigDecimal.ONE);
+        return numerador.divide(denominador, 2, RoundingMode.HALF_UP);
+    }
+
 }

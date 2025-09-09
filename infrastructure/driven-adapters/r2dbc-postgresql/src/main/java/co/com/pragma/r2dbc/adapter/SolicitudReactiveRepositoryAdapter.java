@@ -24,6 +24,7 @@ import org.springframework.data.relational.core.query.Criteria;
 import java.util.List;
 
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Repository
@@ -129,20 +130,21 @@ public class SolicitudReactiveRepositoryAdapter
     }
 
     @Override
-    public Flux<Solicitud> findByEstadosWithPagination(List<String> estados, int page, int size) {
-        log.debug("Buscando solicitudes por estados {} - página: {}, tamaño: {}", estados, page, size);
+    public Flux<Solicitud> findByEstadosWithPagination(List<String> estadosNombres, int page, int size) {
+        log.debug("Buscando solicitudes por estados {} - página: {}, tamaño: {}", estadosNombres, page, size);
 
-        return estadoSolicitudRepository.findByNombres(estados)
+        // CORRECCIÓN CRÍTICA: Usar findByNombres en lugar de intentar usar UUIDs como nombres
+        return estadoSolicitudRepository.findByNombres(estadosNombres)
                 .map(EstadoSolicitud::getId)
                 .collectList()
-                .flux()
-                .flatMap(estadoIds -> {
+                .flatMapMany(estadoIds -> {
                     if (estadoIds.isEmpty()) {
                         log.debug("No se encontraron estados válidos, retornando vacío");
                         return Flux.empty();
                     }
 
-                    // Crear consulta con paginación
+                    log.debug("IDs de estados encontrados: {}", estadoIds);
+
                     Query query = Query.query(Criteria.where("estado_solicitud_id").in(estadoIds))
                             .sort(Sort.by(Sort.Direction.DESC, "fecha_creacion"))
                             .offset((long) page * size)
@@ -153,16 +155,19 @@ public class SolicitudReactiveRepositoryAdapter
                             .all()
                             .flatMap(this::buildSolicitudFromData)
                             .doOnNext(solicitud -> log.debug("Solicitud encontrada: ID={}, Estado={}",
-                                    solicitud.getId(), solicitud.getEstado().getNombre()));
+                                    solicitud.getId(),
+                                    solicitud.getEstado() != null ? solicitud.getEstado().getNombre() : "null"));
                 })
-                .doOnComplete(() -> log.debug("Consulta paginada completada"));
+                .doOnComplete(() -> log.debug("Consulta paginada completada"))
+                .doOnError(error -> log.error("Error al buscar solicitudes: {}", error.getMessage(), error));
     }
 
     @Override
-    public Mono<Long> countByEstados(List<String> estados) {
-        log.debug("Contando solicitudes por estados: {}", estados);
+    public Mono<Long> countByEstados(List<String> estadosNombres) {
+        log.debug("Contando solicitudes por estados: {}", estadosNombres);
 
-        return estadoSolicitudRepository.findByNombres(estados)
+        // CORRECCIÓN CRÍTICA: Usar findByNombres en lugar de intentar usar UUIDs como nombres
+        return estadoSolicitudRepository.findByNombres(estadosNombres)
                 .map(EstadoSolicitud::getId)
                 .collectList()
                 .flatMap(estadoIds -> {
@@ -171,11 +176,15 @@ public class SolicitudReactiveRepositoryAdapter
                         return Mono.just(0L);
                     }
 
+                    log.debug("IDs de estados para contar: {}", estadoIds);
+
                     Query query = Query.query(Criteria.where("estado_solicitud_id").in(estadoIds));
 
-                    return r2dbcEntityTemplate.count(query, SolicitudData.class);
+                    return r2dbcEntityTemplate.count(query, SolicitudData.class)
+                            .doOnNext(count -> log.debug("Total de solicitudes encontradas: {}", count));
                 })
-                .doOnNext(count -> log.debug("Total de solicitudes encontradas: {}", count));
+                .doOnError(error -> log.error("Error al contar solicitudes: {}", error.getMessage(), error));
     }
+
 }
 

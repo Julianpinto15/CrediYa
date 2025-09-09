@@ -40,9 +40,16 @@ public class EstadoSolicitudReactiveRepositoryAdapter extends ReactiveAdapterOpe
     @Override
     public Flux<EstadoSolicitud> findByNombres(List<String> nombres) {
         log.debug("Buscando estados por nombres: {}", nombres);
+
+        if (nombres == null || nombres.isEmpty()) {
+            log.debug("Lista de nombres vacía, retornando Flux vacío");
+            return Flux.empty();
+        }
+
         return repository.findByNombreIn(nombres)
                 .map(data -> mapper.mapBuilder(data, EstadoSolicitud.EstadoSolicitudBuilder.class).build())
-                .doOnNext(estado -> log.debug("Estado encontrado: {}", estado.getNombre()))
+                .doOnNext(estado -> log.debug("Estado encontrado: {} con ID: {}", estado.getNombre(), estado.getId()))
+                .doOnComplete(() -> log.debug("Completada búsqueda de estados por nombres: {}", nombres))
                 .doOnError(error -> log.error("Error buscando estados por nombres {}: {}", nombres, error.getMessage()));
     }
 }

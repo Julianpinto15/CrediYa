@@ -17,11 +17,15 @@ import java.util.UUID;
 public class Solicitud {
 
     private UUID id;
+    private String emailCliente;
+    private String nombreCliente;
     private String documentoIdentidad;
     private BigDecimal monto;
     private Integer plazo;
+    private BigDecimal tasaInteres;
     private TipoPrestamo tipoPrestamo;
     private EstadoSolicitud estado;
+    private BigDecimal salarioCliente;
     private LocalDateTime fechaCreacion;
 
 }

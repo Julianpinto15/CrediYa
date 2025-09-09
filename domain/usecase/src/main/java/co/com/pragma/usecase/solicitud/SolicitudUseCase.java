@@ -9,11 +9,11 @@ import co.com.pragma.model.solicitud.gateways.SolicitudRepository;
 import co.com.pragma.usecase.solicitud.utils.ValidationUtils;
 import lombok.RequiredArgsConstructor;
 
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 
 @RequiredArgsConstructor
@@ -91,16 +91,20 @@ public class SolicitudUseCase {
 
     /**
      * Lista las solicitudes que requieren revisión manual por parte de un asesor.
-     * Filtra por los estados: "Pendiente de revisión", "Rechazadas", "Revision manual"
+     * Filtra por los estados: "Pendiente de revisión", "Rechazadas"
      */
-    public Flux<Solicitud> listarSolicitudesPendientes(int page, int size) {
+    public Mono<List<Solicitud>> listarSolicitudesPendientes(int page, int size) {
         List<String> estadosPendientes = List.of(
                 "Pendiente de revisión",
-                "Rechazadas",
-                "Revision manual"
+                "Rechazada"
         );
 
-        return solicitudRepository.findByEstadosWithPagination(estadosPendientes, page, size);
+        // CORRECCIÓN: Pasar directamente los nombres de los estados, no convertir a UUID
+        return solicitudRepository
+                .findByEstadosWithPagination(estadosPendientes, page, size)
+                .flatMap(this::agregarToListadoItem)
+                .collectList()
+                .defaultIfEmpty(Collections.emptyList());
     }
 
     /**
@@ -109,10 +113,26 @@ public class SolicitudUseCase {
     public Mono<Long> contarSolicitudesPendientes() {
         List<String> estadosPendientes = List.of(
                 "Pendiente de revisión",
-                "Rechazadas",
-                "Revision manual"
+                "Rechazada"
         );
 
+        // CORRECCIÓN: Pasar directamente los nombres de los estados
         return solicitudRepository.countByEstados(estadosPendientes);
     }
+
+    /**
+     * Enriquecer solicitud con datos del cliente
+     */
+    private Mono<Solicitud> agregarToListadoItem(Solicitud solicitud) {
+        return clienteGateway.findByDocumento(solicitud.getDocumentoIdentidad())
+                .map(cliente -> solicitud.toBuilder()
+                        .emailCliente(cliente.getEmail())
+                        .nombreCliente(cliente.getNombreCompleto())
+                        .salarioCliente(cliente.getSalario())
+                        .build())
+                .switchIfEmpty(Mono.just(solicitud)); // Si no encuentra cliente, retorna solicitud original
+    }
+
+
+
 }
